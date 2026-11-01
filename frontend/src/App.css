@@ -1,14 +1,13 @@
 body {
+  font-family: system-ui, sans-serif;
   margin: 0;
-  font-family: system-ui, -apple-system, sans-serif;
   background: #f5f5f5;
-  color: #222;
 }
 
-.container {
+.app {
   max-width: 640px;
-  margin: 40px auto;
-  padding: 24px;
+  margin: 2rem auto;
+  padding: 1.5rem;
   background: #fff;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
@@ -16,34 +15,26 @@ body {
 
 h1 {
   margin-top: 0;
-  font-size: 1.5rem;
-}
-
-.hint {
-  color: #666;
-  font-size: 0.9rem;
 }
 
 textarea {
   width: 100%;
   box-sizing: border-box;
-  padding: 8px;
   font-family: monospace;
-  font-size: 0.9rem;
+  padding: 0.5rem;
   border: 1px solid #ccc;
   border-radius: 4px;
   resize: vertical;
 }
 
 button {
-  margin-top: 12px;
-  padding: 8px 16px;
-  background: #c0392b;
+  margin-top: 0.75rem;
+  padding: 0.5rem 1rem;
+  background: #d9534f;
   color: #fff;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 0.95rem;
 }
 
 button:disabled {
@@ -52,18 +43,22 @@ button:disabled {
 }
 
 .error {
-  margin-top: 16px;
-  padding: 8px 12px;
-  background: #fdecea;
-  color: #a12622;
-  border-radius: 4px;
+  margin-top: 1rem;
+  color: #b00020;
 }
 
 .result {
-  margin-top: 16px;
-  padding: 12px;
-  background: #eef7ee;
-  border-radius: 4px;
+  margin-top: 1rem;
+}
+
+.result h2 {
+  font-size: 1rem;
+  margin: 0.75rem 0 0.25rem;
+}
+
+.result ul {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-family: monospace;
   font-size: 0.9rem;
-  line-height: 1.6;
 }
