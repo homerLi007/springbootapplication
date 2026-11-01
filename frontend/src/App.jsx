@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 export default function App() {
-  const [paths, setPaths] = useState('');
+  const [input, setInput] = useState('');
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -11,61 +11,59 @@ export default function App() {
     setError(null);
     setResult(null);
     setLoading(true);
+    const paths = input
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean);
     try {
-      const list = paths
-        .split('\n')
-        .map((p) => p.trim())
-        .filter((p) => p.length > 0);
       const res = await fetch('/api/delete', {
         method: 'POST',
-        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paths: list }),
+        body: JSON.stringify({ paths })
       });
+      const data = await res.json();
       if (!res.ok) {
-        throw new Error(`Request failed: ${res.status}`);
+        setError(data.error || 'Request failed');
+      } else {
+        setResult(data);
       }
-      setResult(await res.json());
     } catch (err) {
-      setError(err.message || 'Request failed');
+      setError(err.message);
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="container">
-      <h1>Safe File Deleter</h1>
-      <p className="hint">
-        Enter one relative file path per line. Paths are resolved against the
-        configured base directory.
-      </p>
+    <div className="app">
+      <h1>File Deleter</h1>
+      <p>Enter one file path per line. Files will be permanently deleted.</p>
       <form onSubmit={handleSubmit}>
         <textarea
-          rows={8}
-          value={paths}
-          onChange={(e) => setPaths(e.target.value)}
-          placeholder="example.txt"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          rows={6}
+          placeholder="/tmp/a.txt\n/tmp/b.txt"
         />
-        <button type="submit" disabled={loading}>
-          {loading ? 'Deleting…' : 'Delete files'}
+        <button type="submit" disabled={loading || !input.trim()}>
+          {loading ? 'Deleting...' : 'Delete Files'}
         </button>
       </form>
-      {error && <div className="error">{error}</div>}
+      {error && <div className="error">Error: {error}</div>}
       {result && (
         <div className="result">
-          <div>
-            <strong>Deleted:</strong>{' '}
-            {result.deleted && result.deleted.length > 0
-              ? result.deleted.join(', ')
-              : 'none'}
-          </div>
-          <div>
-            <strong>Failed:</strong>{' '}
-            {result.failed && result.failed.length > 0
-              ? result.failed.join(', ')
-              : 'none'}
-          </div>
+          <h2>Deleted ({result.deleted.length})</h2>
+          <ul>
+            {result.deleted.map((p) => (
+              <li key={p}>{p}</li>
+            ))}
+          </ul>
+          <h2>Failed ({result.failed.length})</h2>
+          <ul>
+            {result.failed.map((p, i) => (
+              <li key={i}>{p}</li>
+            ))}
+          </ul>
         </div>
       )}
     </div>

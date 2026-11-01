@@ -1,6 +1,6 @@
 # demo
 
-A Spring Boot + React demo application for **safe file deletion**. The backend exposes an authenticated endpoint that deletes files within a configured base directory using `SecureDirectoryStream` to mitigate TOCTOU (time-of-check to time-of-use) attacks. The frontend is a minimal Vite + React UI.
+A small full-stack application for deleting files on the server by submitting a list of file paths from a React UI. The Spring Boot backend exposes a single REST endpoint that attempts to delete each provided path and reports which files were deleted and which failed.
 
 ## Stack
 
@@ -16,7 +16,6 @@ Spring Boot 3.2 / Java 17 / React 18 / Vite 5
 │       └── main/
 │           ├── java/com/example/demo/
 │           │   ├── DemoApplication.java
-│           │   ├── config/SecurityConfig.java
 │           │   └── controller/ApiController.java
 │           └── resources/application.properties
 └── frontend/
@@ -38,18 +37,7 @@ cd backend
 mvn spring-boot:run
 ```
 
-The backend requires the following environment variables:
-
-- `ADMIN_PASSWORD` — **required**; the password for the in-memory `admin` user (BCrypt-hashed at startup).
-- `DELETE_BASE_DIR` — optional; the directory under which deletions are permitted (defaults to `./data`).
-
-Example:
-
-```bash
-ADMIN_PASSWORD=change-me DELETE_BASE_DIR=./data mvn spring-boot:run
-```
-
-The server listens on `http://localhost:8080`.
+The API starts on `http://localhost:8080`.
 
 ### Frontend
 
@@ -59,48 +47,44 @@ npm install
 npm run dev
 ```
 
-The Vite dev server runs on `http://localhost:5173` and proxies `/api` requests to `http://localhost:8080`.
+The dev server starts on `http://localhost:5173` and proxies `/api` requests to the backend.
 
 ## API
 
-All endpoints require HTTP Basic authentication. Only the `admin` user (role `ADMIN`) is authorized; all other requests are denied.
-
-| Method | Path          | Auth    | Description                                                       |
-|--------|---------------|---------|-------------------------------------------------------------------|
-| POST   | `/api/delete` | `ADMIN` | Delete one or more files relative to the configured base directory. |
+Base path: `/api`
 
 ### `POST /api/delete`
+
+Deletes the files at the given absolute paths.
 
 **Request body**
 
 ```json
 {
-  "paths": ["file1.txt", "subdir/file2.txt"]
+  "paths": ["/tmp/a.txt", "/tmp/b.txt"]
 }
 ```
 
-**Response (200 OK)**
+**Response `200 OK`**
 
 ```json
 {
-  "deleted": ["file1.txt"],
-  "failed": ["subdir/file2.txt"]
+  "deleted": ["/tmp/a.txt"],
+  "failed": ["/tmp/b.txt (not found)"]
 }
 ```
 
-- `deleted` — paths that were successfully deleted.
-- `failed` — paths that were rejected (invalid, outside the base directory, not a regular file, or deletion error).
+**Response `400 Bad Request`** — returned when `paths` is missing:
 
-**Error responses**
-
-- `400 Bad Request` — `paths` is missing or null.
-- `500 Internal Server Error` — the base directory is unavailable.
+```json
+{ "error": "paths is required" }
+```
 
 ## Notes
 
-- **Authentication**: Credentials are stored in memory and configured via the `ADMIN_PASSWORD` environment variable. The application will fail to start if it is not set.
-- **Path safety**: Each requested path is resolved against the real (canonical) base directory and normalized. Paths that escape the base directory, resolve to the base itself, or are not regular files are rejected.
-- **TOCTOU mitigation**: Deletion is performed via `SecureDirectoryStream` with `NOFOLLOW_LINKS` to avoid symlink traversal and race conditions.
-- **Known limitation**: `SecureDirectoryStream` is not supported on all filesystems (notably some Windows configurations and certain network filesystems). When unavailable, deletions are refused rather than performed insecurely.
-- **CSRF**: Disabled for the API; the endpoint is intended for programmatic/admin use behind HTTP Basic auth.
-- **CORS**: Not configured on the backend; the Vite dev proxy is used to avoid cross-origin requests during development.
+- **Destructive operation.** Files are permanently deleted with `Files.deleteIfExists`; there is no trash, undo, or confirmation step on the server side.
+- **No authentication or authorization.** The endpoint accepts any path the backend process can access. Do not expose this service on an untrusted network.
+- **No path allow-listing.** Paths are normalized to absolute form but not restricted to a sandbox directory, so any file writable by the backend user can be deleted.
+- **Directories are not supported.** Only regular files are deleted; passing a directory path will result in a failure entry.
+- **No persistence or logging.** Deletion results are returned to the caller but not stored.
+- **CORS is not configured.** The frontend relies on the Vite dev proxy; a production deployment would need to serve the frontend from the same origin or add CORS configuration to the backend.
