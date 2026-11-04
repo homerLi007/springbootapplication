@@ -2,31 +2,29 @@ import { useState } from 'react';
 
 export default function App() {
   const [input, setInput] = useState('');
-  const [result, setResult] = useState(null);
-  const [error, setError] = useState(null);
+  const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  async function handleSubmit(e) {
+  async function handleDelete(e) {
     e.preventDefault();
     setError(null);
-    setResult(null);
+    setResults([]);
+    const paths = input.split('\n').map(s => s.trim()).filter(Boolean);
+    if (paths.length === 0) {
+      setError('Enter at least one path');
+      return;
+    }
     setLoading(true);
-    const paths = input
-      .split('\n')
-      .map((s) => s.trim())
-      .filter(Boolean);
     try {
       const res = await fetch('/api/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ paths })
       });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || 'Request failed');
-      } else {
-        setResult(data);
-      }
+      setResults(data.results || []);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -35,36 +33,29 @@ export default function App() {
   }
 
   return (
-    <div className="app">
-      <h1>File Deleter</h1>
-      <p>Enter one file path per line. Files will be permanently deleted.</p>
-      <form onSubmit={handleSubmit}>
+    <div className="container">
+      <h1>Safe Delete</h1>
+      <p className="hint">One relative path per line (resolved under ~/safe-delete-root).</p>
+      <form onSubmit={handleDelete}>
         <textarea
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={e => setInput(e.target.value)}
           rows={6}
-          placeholder="/tmp/a.txt\n/tmp/b.txt"
+          placeholder="e.g. tmp/file.txt"
         />
-        <button type="submit" disabled={loading || !input.trim()}>
-          {loading ? 'Deleting...' : 'Delete Files'}
+        <button type="submit" disabled={loading}>
+          {loading ? 'Deleting...' : 'Delete'}
         </button>
       </form>
-      {error && <div className="error">Error: {error}</div>}
-      {result && (
-        <div className="result">
-          <h2>Deleted ({result.deleted.length})</h2>
-          <ul>
-            {result.deleted.map((p) => (
-              <li key={p}>{p}</li>
-            ))}
-          </ul>
-          <h2>Failed ({result.failed.length})</h2>
-          <ul>
-            {result.failed.map((p, i) => (
-              <li key={i}>{p}</li>
-            ))}
-          </ul>
-        </div>
+      {error && <div className="error">{error}</div>}
+      {results.length > 0 && (
+        <ul className="results">
+          {results.map((r, i) => (
+            <li key={i} className={r.deleted ? 'ok' : 'fail'}>
+              <code>{r.path}</code> — {r.deleted ? 'deleted' : 'failed: ' + r.error}
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
